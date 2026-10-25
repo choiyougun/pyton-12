@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 우산 대여 시스템</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: #f0f4f8;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: #ffffff;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+      color: #1e293b;
+    }
+
+    /* 대여 폼 */
+    .rent-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .rent-form input {
+      flex: 1;
+      min-width: 130px;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .rent-form input:focus {
+      border-color: #2563eb;
+    }
+
+    .rent-form button {
+      padding: 12px 20px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .rent-form button:hover {
+      background-color: #1d4ed8;
+    }
+
+    /* 우산 목록 */
+    .umbrella-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .umbrella-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background-color: #f8fafc;
+      transition: all 0.2s;
+    }
+
+    .umbrella-card.available {
+      border-left: 6px solid #10b981;
+    }
+
+    .umbrella-card.rented {
+      border-left: 6px solid #ef4444;
+      background-color: #fff5f5;
+    }
+
+    .umbrella-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .umbrella-title {
+      font-weight: bold;
+      font-size: 16px;
+      color: #0f172a;
+    }
+
+    .umbrella-status {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .return-btn {
+      padding: 8px 16px;
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .return-btn:hover {
+      background-color: #dc2626;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status-badge.available {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-badge.rented {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>☂️ 학교 우산 대여 시스템</h1>
+
+    <!-- 대여 신청 폼 -->
+    <div class="rent-form">
+      <input type="text" id="studentId" placeholder="학번 (예: 10101)" autocomplete="off">
+      <input type="text" id="studentName" placeholder="이름 (예: 홍길동)" autocomplete="off">
+      <button onclick="rentUmbrella()">대여하기</button>
+    </div>
+
+    <!-- 우산 5개 상태 리스트 -->
+    <div class="umbrella-list" id="umbrellaList"></div>
+  </div>
+
+  <script>
+    // 우산 5개 초기 데이터 (LocalStorage에 데이터가 있으면 불러옴)
+    let umbrellas = JSON.parse(localStorage.getItem('umbrellas')) || [
+      { id: 1, isRented: false, studentId: '', studentName: '', rentTime: '', returnTime: '' },
+      { id: 2, isRented: false, studentId: '', studentName: '', rentTime: '', returnTime: '' },
+      { id: 3, isRented: false, studentId: '', studentName: '', rentTime: '', returnTime: '' },
+      { id: 4, isRented: false, studentId: '', studentName: '', rentTime: '', returnTime: '' },
+      { id: 5, isRented: false, studentId: '', studentName: '', rentTime: '', returnTime: '' },
+    ];
+
+    // 저장 함수
+    function saveData() {
+      localStorage.setItem('umbrellas', JSON.stringify(umbrellas));
+      render();
+    }
+
+    // 현재 시간 포맷 함수
+    function getCurrentTime() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${month}/${date} ${hours}:${minutes}`;
+    }
+
+    // 대여 기능
+    function rentUmbrella() {
+      const studentIdInput = document.getElementById('studentId');
+      const studentNameInput = document.getElementById('studentName');
+
+      const studentId = studentIdInput.value.trim();
+      const studentName = studentNameInput.value.trim();
+
+      if (!studentId || !studentName) {
+        alert('학번과 이름을 모두 입력해주세요.');
+        return;
+      }
+
+      // 대여 가능한 우산 찾기 (첫 번째 비어있는 우산)
+      const availableUmbrella = umbrellas.find(u => !u.isRented);
+
+      if (!availableUmbrella) {
+        alert('현재 대여 가능한 우산이 없습니다.');
+        return;
+      }
+
+      // 우산 상태 업데이트
+      availableUmbrella.isRented = true;
+      availableUmbrella.studentId = studentId;
+      availableUmbrella.studentName = studentName;
+      availableUmbrella.rentTime = getCurrentTime();
+      availableUmbrella.returnTime = '';
+
+      // 입력창 초기화
+      studentIdInput.value = '';
+      studentNameInput.value = '';
+
+      saveData();
+      alert(`우산 ${availableUmbrella.id}번이 대여되었습니다.`);
+    }
+
+    // 반납 기능
+    function returnUmbrella(id) {
+      const umbrella = umbrellas.find(u => u.id === id);
+
+      if (umbrella && umbrella.isRented) {
+        const returnTime = getCurrentTime();
+        alert(`우산 ${umbrella.id}번이 반납되었습니다.\n(반납시간: ${returnTime})`);
+
+        umbrella.isRented = false;
+        umbrella.studentId = '';
+        umbrella.studentName = '';
+        umbrella.rentTime = '';
+        umbrella.returnTime = returnTime;
+
+        saveData();
+      }
+    }
+
+    // 화면 그리기
+    function render() {
+      const listElement = document.getElementById('umbrellaList');
+      listElement.innerHTML = '';
+
+      umbrellas.forEach(u => {
+        const card = document.createElement('div');
+        card.className = `umbrella-card ${u.isRented ? 'rented' : 'available'}`;
+
+        if (u.isRented) {
+          card.innerHTML = `
+            <div class="umbrella-info">
+              <div class="umbrella-title">
+                우산 ${u.id}번 
+                <span class="status-badge rented">대여중</span>
+              </div>
+              <div class="umbrella-status">
+                대여 자: ${u.studentId} ${u.studentName}<br>
+                대여시간: ${u.rentTime}
+              </div>
+            </div>
+            <button class="return-btn" onclick="returnUmbrella(${u.id})">반납하기</button>
+          `;
+        } else {
+          const lastReturnText = u.returnTime ? `<br>최근 반납: ${u.returnTime}` : '';
+          card.innerHTML = `
+            <div class="umbrella-info">
+              <div class="umbrella-title">
+                우산 ${u.id}번 
+                <span class="status-badge available">대여 가능</span>
+              </div>
+              <div class="umbrella-status">
+                대여 정보 없음${lastReturnText}
+              </div>
+            </div>
+          `;
+        }
+
+        listElement.appendChild(card);
+      });
+    }
+
+    // 초기 실행
+    render();
+  </script>
+</body>
+</html>
